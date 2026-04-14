@@ -1,0 +1,187 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Description: Create ECS instance with Elastic IP and new VPC/Security Group
+Parameters:
+  InstanceName:
+    Type: String
+    Default: Ai-training-jupyter-instance
+    Description: ECS instance name
+  ImageId:
+    Type: String
+    Default: m-bp1f6lvwq2ovuc94evwx
+    Description: Custom image ID
+  InstanceType:
+    Type: String
+    Default: ecs.n1.small
+    Description: Instance type
+  SystemDiskSize:
+    Type: Number
+    Default: 40
+    Description: System disk size (GB)
+  KeyPairName:
+    Type: String
+    Default: test
+    Description: Key pair name
+  VpcCidrBlock:
+    Type: String
+    Default: 192.168.0.0/16
+    Description: VPC CIDR Block
+  VSwitchCidrBlock:
+    Type: String
+    Default: 192.168.1.0/24
+    Description: VSwitch CIDR Block
+  SecurityGroupName:
+    Type: String
+    Default: jupyter-security-group
+    Description: Security Group Name
+  ZoneId:
+    Type: String
+    Default: cn-hangzhou-k
+    Description: Availability Zone ID
+  EipBandwidth:
+    Type: Number
+    Default: 100
+    Description: EIP Bandwidth (Mbps)
+Resources:
+  NewVpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      VpcName: jupyter-vpc
+      CidrBlock:
+        Ref: VpcCidrBlock
+      Description: VPC for Jupyter instance
+    DeletionPolicy: Delete
+  NewVSwitch:
+    Type: ALIYUN::ECS::VSwitch
+    Properties:
+      VpcId:
+        Ref: NewVpc
+      CidrBlock:
+        Ref: VSwitchCidrBlock
+      ZoneId:
+        Ref: ZoneId
+      VSwitchName: jupyter-vswitch
+      Description: VSwitch for Jupyter instance
+    DependsOn:
+      - NewVpc
+    DeletionPolicy: Delete
+  NewSecurityGroup:
+    Type: ALIYUN::ECS::SecurityGroup
+    Properties:
+      SecurityGroupName:
+        Ref: SecurityGroupName
+      VpcId:
+        Ref: NewVpc
+      Description: Security group for Jupyter instance
+    DependsOn:
+      - NewVpc
+    DeletionPolicy: Delete
+  SecurityGroupIngressSSH:
+    Type: ALIYUN::ECS::SecurityGroupIngress
+    Properties:
+      SecurityGroupId:
+        Ref: NewSecurityGroup
+      IpProtocol: tcp
+      PortRange: 22/22
+      SourceCidrIp: 0.0.0.0/0
+      Priority: 1
+      NicType: internet
+      Policy: accept
+    DependsOn:
+      - NewSecurityGroup
+    DeletionPolicy: Delete
+  SecurityGroupIngressJupyter:
+    Type: ALIYUN::ECS::SecurityGroupIngress
+    Properties:
+      SecurityGroupId:
+        Ref: NewSecurityGroup
+      IpProtocol: tcp
+      PortRange: 80/80
+      SourceCidrIp: 0.0.0.0/0
+      Priority: 1
+      NicType: internet
+      Policy: accept
+    DependsOn:
+      - NewSecurityGroup
+    DeletionPolicy: Delete
+  Eip:
+    Type: ALIYUN::VPC::EIP
+    Properties:
+      Bandwidth:
+        Ref: EipBandwidth
+      InternetChargeType: PayByTraffic
+    DeletionPolicy: Delete
+  EcsInstance:
+    Type: ALIYUN::ECS::Instance
+    Properties:
+      ImageId:
+        Ref: ImageId
+      InstanceType:
+        Ref: InstanceType
+      SecurityGroupIds:
+        - Ref: NewSecurityGroup
+      VpcId:
+        Ref: NewVpc
+      VSwitchId:
+        Ref: NewVSwitch
+      InstanceName:
+        Ref: InstanceName
+      SystemDiskCategory: cloud_efficiency
+      SystemDiskSize:
+        Ref: SystemDiskSize
+      InternetMaxBandwidthOut: 0
+      InternetChargeType: PayByTraffic
+      KeyPairName:
+        Ref: KeyPairName
+      PasswordInherit: false
+    DependsOn:
+      - NewVSwitch
+      - NewSecurityGroup
+      - SecurityGroupIngressSSH
+      - SecurityGroupIngressJupyter
+    DeletionPolicy: Delete
+  EipAssociation:
+    Type: ALIYUN::VPC::EIPAssociation
+    Properties:
+      InstanceId:
+        Fn::GetAtt:
+          - EcsInstance
+          - InstanceId
+      AllocationId:
+        Fn::GetAtt:
+          - Eip
+          - AllocationId
+    DependsOn:
+      - EcsInstance
+      - Eip
+    DeletionPolicy: Delete
+Outputs:
+  InstanceId:
+    Value:
+      Fn::GetAtt:
+        - EcsInstance
+        - InstanceId
+    Description: Created ECS instance ID
+  PublicIp:
+    Value:
+      Fn::GetAtt:
+        - Eip
+        - EipAddress
+    Description: Elastic IP address
+  PrivateIp:
+    Value:
+      Fn::GetAtt:
+        - EcsInstance
+        - PrivateIp
+    Description: ECS instance private IP
+  VpcId:
+    Value:
+      Ref: NewVpc
+    Description: Created VPC ID
+  VSwitchId:
+    Value:
+      Ref: NewVSwitch
+    Description: Created VSwitch ID
+  SecurityGroupId:
+    Value:
+      Ref: NewSecurityGroup
+    Description: Created Security Group ID
