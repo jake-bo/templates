@@ -1,5 +1,5 @@
 ROSTemplateFormatVersion: '2015-09-01'
-Description: Create ECS instance with Elastic IP and new VPC/Security Group
+Description: Create ECS instance with Elastic IP using Existing VPC and VSwitch
 Parameters:
   InstanceName:
     Type: String
@@ -21,59 +21,31 @@ Parameters:
     Type: String
     Default: test
     Description: Key pair name
-  VpcCidrBlock:
+  ExistingVpcId:
     Type: String
-    Default: 192.168.0.0/16
-    Description: VPC CIDR Block
-  VSwitchCidrBlock:
+    Default: vpc-bp1un9hhh5xvvexvue3lj
+    Description: ID of the existing VPC to use (e.g., vpc-bp1...)
+  ExistingVSwitchId:
     Type: String
-    Default: 192.168.1.0/24
-    Description: VSwitch CIDR Block
+    Default: vsw-bp1ndov0tgc2obksnktrj
+    Description: ID of the existing VSwitch to use (e.g., vsw-bp1...). Must belong to the specified VPC.
   SecurityGroupName:
     Type: String
-    Default: jupyter-security-group
-    Description: Security Group Name
-  ZoneId:
-    Type: String
-    Default: cn-hangzhou-k
-    Description: Availability Zone ID
+    Default: jupyter-security-group-temp
+    Description: Name for the new Security Group to be created in the existing VPC
   EipBandwidth:
     Type: Number
     Default: 100
     Description: EIP Bandwidth (Mbps)
 Resources:
-  NewVpc:
-    Type: ALIYUN::ECS::VPC
-    Properties:
-      VpcName: jupyter-vpc
-      CidrBlock:
-        Ref: VpcCidrBlock
-      Description: VPC for Jupyter instance
-    DeletionPolicy: Delete
-  NewVSwitch:
-    Type: ALIYUN::ECS::VSwitch
-    Properties:
-      VpcId:
-        Ref: NewVpc
-      CidrBlock:
-        Ref: VSwitchCidrBlock
-      ZoneId:
-        Ref: ZoneId
-      VSwitchName: jupyter-vswitch
-      Description: VSwitch for Jupyter instance
-    DependsOn:
-      - NewVpc
-    DeletionPolicy: Delete
   NewSecurityGroup:
     Type: ALIYUN::ECS::SecurityGroup
     Properties:
       SecurityGroupName:
         Ref: SecurityGroupName
       VpcId:
-        Ref: NewVpc
-      Description: Security group for Jupyter instance
-    DependsOn:
-      - NewVpc
+        Ref: ExistingVpcId
+      Description: Security group for Jupyter instance in existing VPC
     DeletionPolicy: Delete
   SecurityGroupIngressSSH:
     Type: ALIYUN::ECS::SecurityGroupIngress
@@ -120,9 +92,9 @@ Resources:
       SecurityGroupIds:
         - Ref: NewSecurityGroup
       VpcId:
-        Ref: NewVpc
+        Ref: ExistingVpcId
       VSwitchId:
-        Ref: NewVSwitch
+        Ref: ExistingVSwitchId
       InstanceName:
         Ref: InstanceName
       SystemDiskCategory: cloud_efficiency
@@ -134,7 +106,6 @@ Resources:
         Ref: KeyPairName
       PasswordInherit: false
     DependsOn:
-      - NewVSwitch
       - NewSecurityGroup
       - SecurityGroupIngressSSH
       - SecurityGroupIngressJupyter
@@ -173,14 +144,14 @@ Outputs:
         - EcsInstance
         - PrivateIp
     Description: ECS instance private IP
-  VpcId:
+  UsedVpcId:
     Value:
-      Ref: NewVpc
-    Description: Created VPC ID
-  VSwitchId:
+      Ref: ExistingVpcId
+    Description: ID of the existing VPC used
+  UsedVSwitchId:
     Value:
-      Ref: NewVSwitch
-    Description: Created VSwitch ID
+      Ref: ExistingVSwitchId
+    Description: ID of the existing VSwitch used
   SecurityGroupId:
     Value:
       Ref: NewSecurityGroup
