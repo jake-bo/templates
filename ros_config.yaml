@@ -3,7 +3,7 @@ template-file-path: create-ecs.yaml
 parameters:
   # 实例基本配置
   InstanceName: Ai-training-jupyter-instance
-  ImageId: m-bp1f6lvwq2ovuc94evwx      # 请确认该镜像 ID 在您的地域可用
+  ImageId: m-bp1f6lvwq2ovuc94evwx      # 请确认该镜像 ID 在您的地域可用 test
   InstanceType: ecs.n1.small
   SystemDiskSize: 40                    # 单位：GB
   KeyPairName: test                     # 请确保该密钥对已存在
