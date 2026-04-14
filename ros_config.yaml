@@ -1,0 +1,21 @@
+# ros_config.yaml
+template-file-path: create-ecs.yaml
+parameters:
+  # ECS 实例配置
+  InstanceName: Ai-training-jupyter-instance
+  ImageId: m-bp1f6lvwq2ovuc94evwx      # 请确认该镜像 ID 在当前地域可用
+  InstanceType: ecs.n1.small
+  SystemDiskSize: 40                    # 单位：GB
+  KeyPairName: test                     # 请确保该密钥对已存在
+
+  # 网络配置
+  VpcCidrBlock: 192.168.0.0/16
+  VSwitchCidrBlock: 192.168.1.0/24
+  SecurityGroupName: jupyter-security-group
+  ZoneId: cn-hangzhou-k                 # 请确认可用区有足够资源
+
+  # 弹性公网 IP 配置
+  EipBandwidth: 100                     # 单位：Mbps
+tags:
+  env: training
+  project: jupyter-ai
